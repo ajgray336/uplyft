@@ -1,16 +1,79 @@
 "use client";
 
 import { useState } from "react";
+import { createClient } from "@/lib/supabase/client";
 
 export default function ResumePage() {
+  const supabase = createClient();
+
+  const [file, setFile] = useState<File | null>(null);
   const [fileName, setFileName] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
+    const selectedFile = e.target.files?.[0];
 
-    if (file) {
-      setFileName(file.name);
+    if (!selectedFile) {
+      return;
     }
+
+    const allowedTypes = [
+      "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ];
+
+    if (!allowedTypes.includes(selectedFile.type)) {
+      setMessage("Please select a PDF, DOC, or DOCX file.");
+      setFile(null);
+      setFileName("");
+      return;
+    }
+
+    setFile(selectedFile);
+    setFileName(selectedFile.name);
+    setMessage("");
+  }
+
+  async function handleUpload() {
+    if (!file) {
+      setMessage("Please choose a resume first.");
+      return;
+    }
+
+    setLoading(true);
+    setMessage("");
+
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      setLoading(false);
+      setMessage("You must be logged in to upload a resume.");
+      return;
+    }
+
+    const fileExtension = file.name.split(".").pop();
+    const filePath = `${user.id}/resume.${fileExtension}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("resumes")
+      .upload(filePath, file, {
+        upsert: true,
+        contentType: file.type,
+      });
+
+    setLoading(false);
+
+    if (uploadError) {
+      setMessage(uploadError.message);
+      return;
+    }
+
+    setMessage("Resume uploaded successfully.");
   }
 
   return (
@@ -32,7 +95,9 @@ export default function ResumePage() {
 
       <div className="mx-auto max-w-3xl px-6 py-14">
         <div className="text-center">
-          <p className="text-sm font-bold text-violet-600">YOUR RESUME</p>
+          <p className="text-sm font-bold text-violet-600">
+            YOUR RESUME
+          </p>
 
           <h1 className="mt-3 text-4xl font-black">
             Upload your resume
@@ -54,7 +119,7 @@ export default function ResumePage() {
             </div>
 
             <p className="mt-2 text-sm text-slate-500">
-              PDF or DOCX
+              PDF, DOC, or DOCX
             </p>
 
             <input
@@ -74,10 +139,18 @@ export default function ResumePage() {
 
           <button
             type="button"
-            className="mt-7 w-full rounded-full bg-violet-600 px-6 py-3.5 font-bold text-white hover:bg-violet-700"
+            onClick={handleUpload}
+            disabled={loading}
+            className="mt-7 w-full rounded-full bg-violet-600 px-6 py-3.5 font-bold text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            Upload Resume
+            {loading ? "Uploading..." : "Upload Resume"}
           </button>
+
+          {message && (
+            <p className="mt-4 text-center text-sm font-medium text-slate-600">
+              {message}
+            </p>
+          )}
         </div>
       </div>
     </main>
