@@ -1,4 +1,17 @@
-export default function DashboardPage() {
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+
+export default async function DashboardPage() {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/signup");
+  }
+
   return (
     <main className="min-h-screen bg-slate-50">
       <div className="border-b border-slate-200 bg-white">
@@ -7,9 +20,9 @@ export default function DashboardPage() {
             uplyft<span className="text-violet-600">.</span>
           </div>
 
-          <button className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold">
-            Account
-          </button>
+          <div className="text-sm font-medium text-slate-600">
+            {user.email}
+          </div>
         </div>
       </div>
 
