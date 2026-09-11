@@ -1,15 +1,35 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 export default function ResumePage() {
+  const router = useRouter();
   const supabase = createClient();
 
   const [file, setFile] = useState<File | null>(null);
   const [fileName, setFileName] = useState("");
   const [loading, setLoading] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
   const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    async function checkUser() {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        router.replace("/signup");
+        return;
+      }
+
+      setCheckingAuth(false);
+    }
+
+    checkUser();
+  }, [router, supabase]);
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const selectedFile = e.target.files?.[0];
@@ -52,7 +72,8 @@ export default function ResumePage() {
 
     if (userError || !user) {
       setLoading(false);
-      setMessage("You must be logged in to upload a resume.");
+      setMessage("Your session expired. Please sign in again.");
+      router.push("/signup");
       return;
     }
 
@@ -76,6 +97,14 @@ export default function ResumePage() {
     setMessage("Resume uploaded successfully.");
   }
 
+  if (checkingAuth) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-slate-50">
+        <p className="text-slate-600">Checking your account...</p>
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-slate-50">
       <div className="border-b border-slate-200 bg-white">
@@ -95,9 +124,7 @@ export default function ResumePage() {
 
       <div className="mx-auto max-w-3xl px-6 py-14">
         <div className="text-center">
-          <p className="text-sm font-bold text-violet-600">
-            YOUR RESUME
-          </p>
+          <p className="text-sm font-bold text-violet-600">YOUR RESUME</p>
 
           <h1 className="mt-3 text-4xl font-black">
             Upload your resume
