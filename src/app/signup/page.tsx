@@ -1,11 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 export default function SignUpPage() {
-  const router = useRouter();
   const supabase = createClient();
 
   const [email, setEmail] = useState("");
@@ -15,12 +13,16 @@ export default function SignUpPage() {
 
   async function handleSignUp(e: React.FormEvent) {
     e.preventDefault();
+
     setLoading(true);
     setMessage("");
 
     const { error } = await supabase.auth.signUp({
       email,
       password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/login`,
+      },
     });
 
     setLoading(false);
@@ -30,8 +32,9 @@ export default function SignUpPage() {
       return;
     }
 
-    setMessage("Account created. Check your email to confirm your account.");
-    router.push("/dashboard");
+    setMessage(
+      "Account created! Check your email and click the confirmation link before logging in."
+    );
   }
 
   return (
@@ -95,6 +98,16 @@ export default function SignUpPage() {
               {message}
             </p>
           )}
+
+          <p className="mt-6 text-center text-sm text-slate-600">
+            Already have an account?{" "}
+            <a
+              href="/login"
+              className="font-bold text-violet-600"
+            >
+              Log in
+            </a>
+          </p>
         </form>
       </div>
     </main>
